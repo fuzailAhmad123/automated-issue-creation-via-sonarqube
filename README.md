@@ -1,0 +1,1 @@
+# automated-issue-creation-via-sonarqube
