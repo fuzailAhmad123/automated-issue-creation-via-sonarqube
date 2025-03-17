@@ -4,7 +4,7 @@ Automating Issue Creation from SonarQube in CI/CD Pipelines (90h)
 This project focuses on automating the creation of GitHub issues based on SonarQube analysis in a CI/CD pipeline. By integrating SonarQube results into the development workflow, the system will automatically detect code quality issues, create GitHub issues, and notify maintainers for quick action.
 
 Key Features:
-
+-----------------------------------------------------------------------
 Automated Issue Creation: Detect new issues from SonarQube scans and create corresponding GitHub issues
 Severity-Based Issue Prioritization: Categorize issues based on severity (Critical, Major, Minor)
 Pipeline Integration: Ensure smooth integration with CI/CD workflows for real-time analysis
@@ -15,3 +15,5 @@ Expected Outcome: A fully automated issue tracking system that integrates SonarQ
 Skills Required: Python, JavaScript, GitHub Actions, SonarQube API
 Mentor: Leticia
 Difficulty: Easy
+
+-------------------------------------------------------------------
