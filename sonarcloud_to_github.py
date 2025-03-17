@@ -59,7 +59,7 @@ def create_github_issue(issue):
     data = {
         "title": title,
         "body": body,
-        "labels": [f"sonarcloud", f"severity:{issue.get('severity').lower()}"]
+        "labels": ["sonarcloud", f"severity:{issue.get('severity', '').lower()}"]
     }
 
     headers = {
