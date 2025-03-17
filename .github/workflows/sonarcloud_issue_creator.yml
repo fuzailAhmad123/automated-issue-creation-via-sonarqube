@@ -30,6 +30,6 @@ jobs:
           
       - name: Run SonarCloud to GitHub issue converter
         env:
-          SONARCLOUD_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
         run: python sonarcloud_to_github.py 

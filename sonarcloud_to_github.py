@@ -6,7 +6,7 @@ from datetime import datetime
 SONARCLOUD_URL = "https://sonarcloud.io"
 PROJECT_KEY = "fuzailAhmad123_automated-issue-creation-via-sonarqube"
 ORGANIZATION_KEY = "fuzailahmad123"
-SONARCLOUD_TOKEN = os.environ.get("SONAR_TOKEN")
+SONAR_TOKEN = os.environ.get("SONAR_TOKEN")
 PAT_TOKEN = os.environ.get("PAT_TOKEN")
 MIN_SEVERITY= "MAJOR"
 GITHUB_REPO_OWNER = "fuzailAhmad123"
@@ -25,7 +25,7 @@ def get_sonarcloud_issues():
     }
 
     headers = {
-        "Authorization": f"Bearer {SONARCLOUD_TOKEN}"
+        "Authorization": f"Bearer {SONAR_TOKEN}"
     }
 
     response = requests.get(urls, params=params, headers=headers)
@@ -106,7 +106,7 @@ def main ():
             print(f"Skipping issue (below severity threshold): {issue.get('message')}")
 
 if __name__ == "__main__":
-    if not SONARCLOUD_TOKEN or not PAT_TOKEN:
-        print("Error: Environment variables SONARCLOUD_TOKEN and PAT_TOKEN must be set")
+    if not SONAR_TOKEN or not PAT_TOKEN:
+        print("Error: Environment variables SONAR_TOKEN and PAT_TOKEN must be set")
         exit(1)
     main()
