@@ -28,7 +28,7 @@ def get_sonarcloud_issues():
         "Authorization": f"Bearer {SONAR_TOKEN}"
     }
 
-    response = requests.get(urls, params=params, headers=headers)
+    response = requests.get(url, params=params, headers=headers)
     if response.status_code == 200:
         return response.json().get("issues", [])
     else:
