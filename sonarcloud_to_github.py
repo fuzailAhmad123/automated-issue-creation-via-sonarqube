@@ -100,7 +100,7 @@ def main ():
 
     for issue in issues:
         if should_create_issue(issue):
-            print(f"Creating GitHub issue for: {issue.get('message', "")}")
+            print(f"Creating GitHub issue for: {issue.get('message', '')}")
             create_github_issue(issue)
         else:
             print(f"Skipping issue (below severity threshold): {issue.get('message')}")
