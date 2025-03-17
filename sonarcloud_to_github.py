@@ -39,7 +39,7 @@ def create_github_issue(issue):
     """Create a GitHub issue from a SonarCloud issue"""
     url = f"https://api.github.com/repos/{GITHUB_REPO_OWNER}/{GITHUB_REPO_NAME}/issues"
 
-    commponent = issue.get("component","")
+    component = issue.get("component","")
     file_path = component.replace(f"{PROJECT_KEY}:", "")
     line = issue.get("line", "Unkown")
 
@@ -100,7 +100,7 @@ def main ():
 
     for issue in issues:
         if should_create_issue(issue):
-            print(f"Creating GitHub issue for: {issue.get('message')}")
+            print(f"Creating GitHub issue for: {issue.get('message', "")}")
             create_github_issue(issue)
         else:
             print(f"Skipping issue (below severity threshold): {issue.get('message')}")
