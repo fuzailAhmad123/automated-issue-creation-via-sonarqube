@@ -1,23 +1,14 @@
-import os
 import requests
 import json
+import config
 from datetime import datetime
-
-SONARCLOUD_URL = "https://sonarcloud.io"
-PROJECT_KEY = "fuzailAhmad123_automated-issue-creation-via-sonarqube"
-ORGANIZATION_KEY = "fuzailahmad123"
-SONAR_TOKEN = os.environ.get("SONAR_TOKEN")
-PAT_TOKEN = os.environ.get("PAT_TOKEN")
-MIN_SEVERITY= "MAJOR"
-GITHUB_REPO_OWNER = "fuzailAhmad123"
-GITHUB_REPO_NAME = "automated-issue-creation-via-sonarqube"
 
 def get_sonarcloud_issues():
     """Fetch new issues from SonarCloud"""
-    url = f"{SONARCLOUD_URL}/api/issues/search"
+    url = f"{config.SONARCLOUD_URL}/api/issues/search"
     params = {
-       "componentKeys": PROJECT_KEY,
-       "organization": ORGANIZATION_KEY,
+       "componentKeys": config.PROJECT_KEY,
+       "organization": config.ORGANIZATION_KEY,
        "resolved": "false",
        "severities": "BLOCKER,CRITICAL,MAJOR",
        "statuses": "OPEN,CONFIRMED",
@@ -25,7 +16,7 @@ def get_sonarcloud_issues():
     }
 
     headers = {
-        "Authorization": f"Bearer {SONAR_TOKEN}"
+        "Authorization": f"Bearer {config.SONAR_TOKEN}"
     }
 
     response = requests.get(url, params=params, headers=headers)
@@ -37,10 +28,10 @@ def get_sonarcloud_issues():
 
 def create_github_issue(issue):
     """Create a GitHub issue from a SonarCloud issue"""
-    url = f"https://api.github.com/repos/{GITHUB_REPO_OWNER}/{GITHUB_REPO_NAME}/issues"
+    url = f"https://api.github.com/repos/{config.GITHUB_REPO_OWNER}/{config.GITHUB_REPO_NAME}/issues"
 
     component = issue.get("component","")
-    file_path = component.replace(f"{PROJECT_KEY}:", "")
+    file_path = component.replace(f"{config.PROJECT_KEY}:", "")
     line = issue.get("line", "Unkown")
 
     title = f"[{issue.get('severity')}] {issue.get('type')}: {issue.get('message')}"
@@ -53,7 +44,7 @@ def create_github_issue(issue):
      - **Line** : {line}
      - **Message** : {issue.get('message')}
 
-     [VIEW IN SONARCLOUD]({SONARCLOUD_URL}/project/issues?id={PROJECT_KEY}&issues={issue.get('key')}&open={issue.get('key')})
+     [VIEW IN SONARCLOUD]({config.SONARCLOUD_URL}/project/issues?id={config.PROJECT_KEY}&issues={issue.get('key')}&open={issue.get('key')})
     """
 
     data = {
@@ -63,7 +54,7 @@ def create_github_issue(issue):
     }
 
     headers = {
-        "Authorization" : f"token {PAT_TOKEN}",
+        "Authorization" : f"token {config.PAT_TOKEN}",
         "Accept": "application/vnd.github.v3+json"
     }
 
@@ -86,7 +77,7 @@ def should_create_issue(issue):
      }
 
      issue_severity = severity_levels.get(issue.get("severity", "INFO"), 0)
-     min_severity_level = severity_levels.get(MIN_SEVERITY, 0)
+     min_severity_level = severity_levels.get(config.MIN_SEVERITY, 0)
 
      return issue_severity >= min_severity_level
 
@@ -106,7 +97,7 @@ def main ():
             print(f"Skipping issue (below severity threshold): {issue.get('message')}")
 
 if __name__ == "__main__":
-    if not SONAR_TOKEN or not PAT_TOKEN:
+    if not config.SONAR_TOKEN or not config.PAT_TOKEN:
         print("Error: Environment variables SONAR_TOKEN and PAT_TOKEN must be set")
         exit(1)
     main()
