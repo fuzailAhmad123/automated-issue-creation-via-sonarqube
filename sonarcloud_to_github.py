@@ -18,7 +18,7 @@ def get_sonarcloud_issues():
     params = {
        "componentKeys": PROJECT_KEY,
        "organization": ORGANIZATION_KEY,
-       "resolved": false,
+       "resolved": "false",
        "severities": "BLOCKER,CRITICAL,MAJOR",
        "statuses": "OPEN,CONFIRMED",
        "createdAfter": (datetime.now().date().isoformat())
