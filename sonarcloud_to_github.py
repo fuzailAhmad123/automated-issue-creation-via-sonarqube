@@ -29,7 +29,7 @@ def get_sonarcloud_issues():
     }
 
     response = requests.get(urls, params=params, headers=headers)
-    if response.status_code = 200:
+    if response.status_code == 200:
         return response.json().get("issues", [])
     else:
         print(f"Error fetching SonarCloud issues: {response.status_code}, {response.text}")
