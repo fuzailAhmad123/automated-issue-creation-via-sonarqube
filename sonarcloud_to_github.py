@@ -43,23 +43,23 @@ def create_github_issue(issue):
     file_path = component.replace(f"{PROJECT_KEY}:", "")
     line = issue.get("line", "Unkown")
 
-    title = f"[{issue.get("severity")}] {issue.get("type")}: {issue.get("message")}"
+    title = f"[{issue.get('severity')}] {issue.get('type')}: {issue.get('message')}"
     body = f""" 
      SonarCloud detected a code quality issue:
 
-     - **Rule** : {issue.get("rule")}
-     - **Severity** : {issue.get("severity")}
+     - **Rule** : {issue.get('rule')}
+     - **Severity** : {issue.get('severity')}
      - **File** : {file_path}
      - **Line** : {line}
-     - **Message** : {issue.get("message")}
+     - **Message** : {issue.get('message')}
 
-     [VIEW IN SONARCLOUD]({SONARCLOUD_URL}/project/issues?id={PROJECT_KEY}&issues={issue.get(key)}&open={issue.get("key")})
+     [VIEW IN SONARCLOUD]({SONARCLOUD_URL}/project/issues?id={PROJECT_KEY}&issues={issue.get('key')}&open={issue.get('key')})
     """
 
     data = {
         "title": title,
         "body": body,
-        "labels": [f"sonarcloud", f"severity:{issue.get("severity").lower()}"]
+        "labels": [f"sonarcloud", f"severity:{issue.get('severity').lower()}"]
     }
 
     headers = {
