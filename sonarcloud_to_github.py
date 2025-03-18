@@ -1,114 +1,9 @@
-# import requests
-# import json
-# import config
-# from datetime import datetime
-
-# def get_sonarcloud_issues():
-#     """Fetch new issues from SonarCloud"""
-#     url = f"{config.SONARCLOUD_URL}/api/issues/search"
-#     params = {
-#        "componentKeys": config.PROJECT_KEY,
-#        "organization": config.ORGANIZATION_KEY,
-#        "resolved": "false",
-#        "severities": "BLOCKER,CRITICAL,MAJOR",
-#        "statuses": "OPEN,CONFIRMED",
-#        "createdAfter": (datetime.now().date().isoformat())
-#     }
-
-#     headers = {
-#         "Authorization": f"Bearer {config.SONAR_TOKEN}"
-#     }
-
-#     response = requests.get(url, params=params, headers=headers)
-#     if response.status_code == 200:
-#         return response.json().get("issues", [])
-#     else:
-#         print(f"Error fetching SonarCloud issues: {response.status_code}, {response.text}")
-#         return []
-
-# def create_github_issue(issue):
-#     """Create a GitHub issue from a SonarCloud issue"""
-#     url = f"https://api.github.com/repos/{config.GITHUB_REPO_OWNER}/{config.GITHUB_REPO_NAME}/issues"
-
-#     component = issue.get("component","")
-#     file_path = component.replace(f"{config.PROJECT_KEY}:", "")
-#     line = issue.get("line", "Unkown")
-
-#     title = f"[{issue.get('severity')}] {issue.get('type')}: {issue.get('message')}"
-#     body = f""" 
-#      SonarCloud detected a code quality issue:
-
-#      - **Rule** : {issue.get('rule')}
-#      - **Severity** : {issue.get('severity')}
-#      - **File** : {file_path}
-#      - **Line** : {line}
-#      - **Message** : {issue.get('message')}
-
-#      [VIEW IN SONARCLOUD]({config.SONARCLOUD_URL}/project/issues?id={config.PROJECT_KEY}&issues={issue.get('key')}&open={issue.get('key')})
-#     """
-
-#     data = {
-#         "title": title,
-#         "body": body,
-#         "labels": ["sonarcloud", f"severity:{issue.get('severity', '').lower()}"]
-#     }
-
-#     headers = {
-#         "Authorization" : f"token {config.PAT_TOKEN}",
-#         "Accept": "application/vnd.github.v3+json"
-#     }
-
-#     response = requests.post(url, headers=headers, data=json.dumps(data))
-#     if response.status_code == 201:
-#         print(f"Created GitHub issue: {response.json().get('html_url')}")
-#         return True
-#     else:
-#         print(f"Error creating GitHub issue: {response.status_code}, {response.text}")
-#         return False
-
-# def should_create_issue(issue):
-#      """Determine if an issue should trigger GitHub issue creation"""
-#      severity_levels = {
-#         "BLOCKER": 5,
-#         "CRITICAL": 4,
-#         "MAJOR": 3,
-#         "MINOR": 2,
-#         "INFO": 1
-#      }
-
-#      issue_severity = severity_levels.get(issue.get("severity", "INFO"), 0)
-#      min_severity_level = severity_levels.get(config.MIN_SEVERITY, 0)
-
-#      return issue_severity >= min_severity_level
-
-# def main ():
-#     """Main function to fetch issue from Sonarcloud and create issue on Github"""
-#     print("Fetching data from SonarCloud")
-#     issues = get_sonarcloud_issues()
-
-#     print(f"found {len(issues)} issues")
-
-
-#     for issue in issues:
-#         if should_create_issue(issue):
-#             print(f"Creating GitHub issue for: {issue.get('message', '')}")
-#             create_github_issue(issue)
-#         else:
-#             print(f"Skipping issue (below severity threshold): {issue.get('message')}")
-
-# if __name__ == "__main__":
-#     if not config.SONAR_TOKEN or not config.PAT_TOKEN:
-#         print("Error: Environment variables SONAR_TOKEN and PAT_TOKEN must be set")
-#         exit(1)
-#     main()
-
-
 import requests
 import json
 import os
 import logging
 from datetime import datetime, timedelta
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Tuple
 
 # Configure logging
 logging.basicConfig(
@@ -207,15 +102,66 @@ def get_sonarcloud_issues() -> List[Dict[str, Any]]:
     
     return issues
 
-def create_github_issue(issue: Dict[str, Any]) -> bool:
+def get_next_github_issue_number() -> int:
     """
-    Create a GitHub issue from a SonarCloud issue
+    Get the next GitHub issue number by finding the highest current issue number
+    
+    Returns:
+        int: The next issue number (current highest + 1)
+    """
+    url = f"https://api.github.com/repos/{Config.GITHUB_REPO_OWNER}/{Config.GITHUB_REPO_NAME}/issues"
+    params = {
+        "state": "all",
+        "per_page": 1,
+        "sort": "created", 
+        "direction": "desc"
+    }
+    
+    headers = {
+        "Authorization": f"token {Config.PAT_TOKEN}",
+        "Accept": "application/vnd.github.v3+json"
+    }
+    
+    try:
+        for attempt in range(Config.MAX_RETRIES):
+            try:
+                response = requests.get(
+                    url, 
+                    params=params, 
+                    headers=headers, 
+                    timeout=Config.REQUEST_TIMEOUT
+                )
+                response.raise_for_status()
+                
+                issues = response.json()
+                if issues:
+                    # The number of the most recent issue plus 1
+                    return issues[0]["number"] + 1
+                else:
+                    # If no issues exist yet
+                    return 1
+                
+            except (requests.RequestException, requests.Timeout) as e:
+                if attempt < Config.MAX_RETRIES - 1:
+                    logger.warning(f"Attempt {attempt+1} failed when getting next issue number: {str(e)}. Retrying...")
+                    continue
+                raise
+                
+    except Exception as e:
+        logger.error(f"Error determining next GitHub issue number: {str(e)}")
+        # Return 0 if we couldn't determine the next issue number
+        return 0
+
+def create_github_issue(issue: Dict[str, Any], next_number: int) -> Tuple[bool, int]:
+    """
+    Create a GitHub issue from a SonarCloud issue with expected issue number in title
     
     Args:
         issue: SonarCloud issue data
+        next_number: Expected issue number to include in the title
         
     Returns:
-        bool: True if issue was created successfully, False otherwise
+        Tuple[bool, int]: Success status and actual issue number
     """
     url = f"https://api.github.com/repos/{Config.GITHUB_REPO_OWNER}/{Config.GITHUB_REPO_NAME}/issues"
     
@@ -229,12 +175,13 @@ def create_github_issue(issue: Dict[str, Any]) -> bool:
     message = issue.get('message', '')
     rule = issue.get('rule', '')
     
-    # Create a more descriptive title
-    title = f"[{severity}] {issue_type}: {message[:80]}{'...' if len(message) > 80 else ''}"
+    # Create a title with expected issue number
+    title_prefix = f"#{next_number}" if next_number > 0 else ""
+    title = f"{title_prefix} [{severity}] {issue_type}: {message[:80]}{'...' if len(message) > 80 else ''}"
     
     # Create a more detailed body with markdown formatting
     body = f"""
-## SonarCloud Issue: {issue_key}
+## SonarCloud Issue: {title_prefix}
 
 ### Details
 - **Rule**: {rule}
@@ -273,9 +220,11 @@ def create_github_issue(issue: Dict[str, Any]) -> bool:
                 )
                 response.raise_for_status()
                 
-                issue_url = response.json().get('html_url', '')
-                logger.info(f"Created GitHub issue: {issue_url}")
-                return True
+                result = response.json()
+                issue_url = result.get('html_url', '')
+                actual_number = result.get('number', 0)
+                logger.info(f"Created GitHub issue #{actual_number}: {issue_url}")
+                return True, actual_number
             except (requests.RequestException, requests.Timeout) as e:
                 if attempt < Config.MAX_RETRIES - 1:
                     logger.warning(f"Attempt {attempt+1} failed: {str(e)}. Retrying...")
@@ -283,7 +232,7 @@ def create_github_issue(issue: Dict[str, Any]) -> bool:
                 raise
     except requests.RequestException as e:
         logger.error(f"Error creating GitHub issue: {str(e)}")
-        return False
+        return False, 0
 
 def should_create_issue(issue: Dict[str, Any]) -> bool:
     """
@@ -342,14 +291,25 @@ def main() -> None:
         
         logger.info(f"Found {len(issues)} issues")
         
+        # Get the next expected GitHub issue number
+        next_issue_number = get_next_github_issue_number()
+        logger.info(f"Next expected GitHub issue number: #{next_issue_number}")
+        
         created_count = 0
         skipped_count = 0
+        current_number = next_issue_number
         
         for issue in issues:
             if should_create_issue(issue):
-                logger.info(f"Creating GitHub issue for: {issue.get('message', '')[:80]}...")
-                if create_github_issue(issue):
+                logger.info(f"Creating GitHub issue (expected #{current_number}) for: {issue.get('message', '')[:80]}...")
+                success, actual_number = create_github_issue(issue, current_number)
+                if success:
                     created_count += 1
+                    # Update our tracking of the current number based on what GitHub actually assigned
+                    if actual_number > 0:
+                        current_number = actual_number + 1
+                    else:
+                        current_number += 1
             else:
                 skipped_count += 1
                 logger.debug(f"Skipping issue (below severity threshold): {issue.get('message', '')[:80]}...")
