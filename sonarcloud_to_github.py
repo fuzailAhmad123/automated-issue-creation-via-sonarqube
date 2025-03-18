@@ -20,7 +20,7 @@ class Config:
     ORGANIZATION_KEY = "fuzailahmad123"
     SONAR_TOKEN = os.environ.get("SONAR_TOKEN")
     PAT_TOKEN = os.environ.get("PAT_TOKEN")
-    MIN_SEVERITY = "MAJOR"
+    MIN_SEVERITY = "MINOR"
     GITHUB_REPO_OWNER = "fuzailAhmad123"
     GITHUB_REPO_NAME = "automated-issue-creation-via-sonarqube"
     
