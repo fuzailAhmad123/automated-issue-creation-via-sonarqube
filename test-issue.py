@@ -1,14 +1,12 @@
-import os
 
-# 1. CRITICAL: OS Command Injection
-def command_injection(user_input):
-    os.system("rm -rf " + user_input) 
+import hashlib
 
-# 2. MAJOR: Hardcoded Credentials
-def hardcoded_password():
-    password = "SuperSecret123" 
-    print("Using password:", password)
+def weak_hashing(password):
+    hash_value = hashlib.md5(password.encode()).hexdigest() 
+    return hash_value
 
-# 3. BLOCKER: Divide by Zero
 def division_by_zero(user_input):
-    return 10 / int(user_input) 
+    return 10 / int(user_input)
+
+division_by_zero("0")
+print(weak_hashing("password123"))

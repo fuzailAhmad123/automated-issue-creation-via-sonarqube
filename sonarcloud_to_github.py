@@ -3,6 +3,7 @@ import json
 import os
 import logging
 from datetime import datetime, timedelta
+from urllib.parse import quote
 from typing import List, Dict, Any, Optional, Tuple
 
 # Configure logging
@@ -195,7 +196,7 @@ def create_github_issue(issue: Dict[str, Any], next_number: int) -> Tuple[bool, 
 
 ### Links
 - [View in SonarCloud]({Config.SONARCLOUD_URL}/project/issues?id={Config.PROJECT_KEY}&issues={issue_key}&open={issue_key})
-- [SonarCloud Rule Definition]({Config.SONARCLOUD_URL}/coding_rules?open={rule}&rule_key={rule})
+- [SonarCloud Rule Definition](f"{Config.SONARCLOUD_URL}/organizations/{Config.ORGANIZATION_KEY}/rules?open={quote(rule, safe="")}&rule_key={quote(rule, safe="")}")
 """
     
     data = {
