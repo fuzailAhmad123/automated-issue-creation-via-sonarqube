@@ -2,11 +2,11 @@ import requests
 import json
 import os
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from urllib.parse import quote
-from typing import List, Dict, Any, Optional, Tuple
+from typing import List, Dict, Any, Tuple
 
-# Configure logging
+#  Configuring logger 
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s'
@@ -50,7 +50,7 @@ def get_sonarcloud_issues() -> List[Dict[str, Any]]:
     page_size = 100
     
     # Use a lookback period instead of just today
-    lookback_date = (datetime.now() - timedelta(days=Config.ISSUES_LOOKBACK_DAYS)).date().isoformat()
+    lookback_date = (datetime.now(timezone.utc) - timedelta(days=Config.ISSUES_LOOKBACK_DAYS)).date().isoformat()
     
     while True:
         url = f"{Config.SONARCLOUD_URL}/api/issues/search"
@@ -58,7 +58,7 @@ def get_sonarcloud_issues() -> List[Dict[str, Any]]:
             "componentKeys": Config.PROJECT_KEY,
             "organization": Config.ORGANIZATION_KEY,
             "resolved": "false",
-            "severities": "BLOCKER,CRITICAL,MAJOR",
+            "severities": "BLOCKER,CRITICAL,MAJOR,MINOR",
             "statuses": "OPEN,CONFIRMED",
             "createdAfter": lookback_date,
             "p": page,
