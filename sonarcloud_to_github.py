@@ -196,13 +196,13 @@ def create_github_issue(issue: Dict[str, Any], next_number: int) -> Tuple[bool, 
 
 ### Links
 - [View in SonarCloud]({Config.SONARCLOUD_URL}/project/issues?id={Config.PROJECT_KEY}&issues={issue_key}&open={issue_key})
-- [SonarCloud Rule Definition](f"{Config.SONARCLOUD_URL}/organizations/{Config.ORGANIZATION_KEY}/rules?open={quote(rule, safe="")}&rule_key={quote(rule, safe="")}")
+- [SonarCloud Rule Definition]({Config.SONARCLOUD_URL}/organizations/{Config.ORGANIZATION_KEY}/rules?open={quote(rule, safe="")}&rule_key={quote(rule, safe="")})
 """
     
     data = {
         "title": title,
         "body": body,
-        "labels": ["sonarcloud", f"severity:{severity.lower()}", f"type:{issue_type.lower()}"]
+        "labels": ["sonarcloud", f"{severity.lower()}", f"{issue_type.lower()}"]
     }
     
     headers = {
