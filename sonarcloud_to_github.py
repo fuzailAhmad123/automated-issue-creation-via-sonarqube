@@ -1,16 +1,18 @@
 import requests
 import json
 import os
+import re
 import logging
 from datetime import datetime, timedelta, timezone
 from urllib.parse import quote
-from typing import List, Dict, Any, Tuple, Set
+from typing import List, Dict, Any, Tuple
 
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+GITHUB_ACCEPT_HEADER = "application/vnd.github.v3+json"
 
 class Config:
     """Configuration class for the integration"""
@@ -36,141 +38,100 @@ class Config:
 
 def get_sonarcloud_issues() -> List[Dict[str, Any]]:
     """
-    Fetch new issues from SonarCloud
-    
-    Returns:
-        List of SonarCloud issues
-    """
-    issues = []
-    page = 1
-    page_size = 100
-    
-    lookback_date = (datetime.now(timezone.utc) - timedelta(days=Config.ISSUES_LOOKBACK_DAYS)).date().isoformat()
+    Fetch new issues from SonarCloud.
 
-    min_severity_level = Config.SEVERITY_LEVELS.get(Config.MIN_SEVERITY, 2)
-    severities_to_fetch = [sev for sev, level in Config.SEVERITY_LEVELS.items() if level >= min_severity_level]
-    severities_param = ",".join(severities_to_fetch)
-    
+    Returns:
+        List of SonarCloud issues.
+    """
+    issues, page, page_size = [], 1, 100
+    lookback_date = (datetime.now(timezone.utc) - timedelta(days=Config.ISSUES_LOOKBACK_DAYS)).date().isoformat()
+    severities = ",".join(sev for sev, level in Config.SEVERITY_LEVELS.items() if level >= Config.SEVERITY_LEVELS.get(Config.MIN_SEVERITY, 2))
+
+    url = f"{Config.SONARCLOUD_URL}/api/issues/search"
+    headers = {"Authorization": f"Bearer {Config.SONAR_TOKEN}"}
+
     while True:
-        url = f"{Config.SONARCLOUD_URL}/api/issues/search"
         params = {
             "componentKeys": Config.PROJECT_KEY,
             "organization": Config.ORGANIZATION_KEY,
             "resolved": "false",
-            "severities": severities_param,
+            "severities": severities,
             "statuses": "OPEN,CONFIRMED",
             "createdAfter": lookback_date,
             "p": page,
             "ps": page_size
         }
-        
-        headers = {
-            "Authorization": f"Bearer {Config.SONAR_TOKEN}"
-        }
-        
+
         try:
             for attempt in range(Config.MAX_RETRIES):
                 try:
-                    response = requests.get(
-                        url, 
-                        params=params, 
-                        headers=headers, 
-                        timeout=Config.REQUEST_TIMEOUT
-                    )
+                    response = requests.get(url, params=params, headers=headers, timeout=Config.REQUEST_TIMEOUT)
                     response.raise_for_status()
                     break
                 except requests.RequestException as e:
                     if attempt < Config.MAX_RETRIES - 1:
-                        logger.warning(f"Attempt {attempt+1} failed: {str(e)}. Retrying...")
+                        logger.warning(f"Attempt {attempt + 1} failed: {str(e)}. Retrying...")
                         continue
                     raise
-            
+
             data = response.json()
-            batch_issues = data.get("issues", [])
-            issues.extend(batch_issues)
-            
-            total = data.get("total", 0)
-            if page * page_size >= total:
+            issues.extend(data.get("issues", []))
+
+            if page * page_size >= data.get("total", 0):
                 break
-                
             page += 1
-            
+
         except requests.RequestException as e:
             logger.error(f"Error fetching SonarCloud issues: {str(e)}")
             break
-    
+
     return issues
 
 def get_existing_github_issues() -> Dict[str, Any]:
     """
-    Get existing Github issues to check for duplicates
-    
+    Get existing Github issues to check for duplicates.
+
     Returns:
-        Dict mapping SonarCloud issue keys to GitHub issue data
+        Dict mapping SonarCloud issue keys to GitHub issue data.
     """
     existing_issues = {}
-    page = 1
-    per_page = 100
-    issue_count = 0
+    page, issue_count, per_page = 1, 0, 100
     max_issues = Config.DUPLICATE_GITHUB_ISSUES_CHECK_COUNT
-    
+
     url = f"https://api.github.com/repos/{Config.GITHUB_REPO_OWNER}/{Config.GITHUB_REPO_NAME}/issues"
-    
     headers = {
         "Authorization": f"token {Config.PAT_TOKEN}",
-        "Accept": "application/vnd.github.v3+json"
+        "Accept": GITHUB_ACCEPT_HEADER
     }
-    
-    params = {
-        "state": "all", 
-        "labels": "sonarcloud",
-        "per_page": per_page
-    }
-    
-    try:
-        while issue_count < max_issues:
-            params["page"] = page
-            
-            for attempt in range(Config.MAX_RETRIES):
-                try:
-                    response = requests.get(
-                        url,
-                        headers=headers,
-                        params=params,
-                        timeout=Config.REQUEST_TIMEOUT
-                    )
-                    response.raise_for_status()
-                    break
-                except requests.RequestException as e:
-                    if attempt < Config.MAX_RETRIES - 1:
-                        logger.warning(f"Attempt {attempt+1} failed when getting existing issues: {str(e)}. Retrying...")
-                        continue
-                    raise
-            
+
+    while issue_count < max_issues:
+        try:
+            response = requests.get(
+                url, headers=headers,
+                params={"state": "all", "labels": "sonarcloud", "per_page": per_page, "page": page},
+                timeout=Config.REQUEST_TIMEOUT
+            )
+            response.raise_for_status()
             issues = response.json()
-            
+
             if not issues:
                 break
-                
+
             for issue in issues:
-                issue_count += 1
-                
                 body = issue.get("body", "")
-                
-                import re
-                match = re.search(r"issues=([^&]+)&", body)
+                match = re.search(r"\* Sonar Issue Key:\s*([\w-]+)", body)
                 if match:
-                    sonarcloud_key = match.group(1)
-                    existing_issues[sonarcloud_key] = issue
-            
+                    existing_issues[match.group(1)] = issue
+
+            issue_count += len(issues)
             if len(issues) < per_page:
                 break
-                
             page += 1
-            
-    except Exception as e:
-        logger.error(f"Error fetching existing Github issues: {str(e)}")
-    
+
+        except requests.RequestException as e:
+            logger.error(f"Error fetching GitHub issues: {str(e)}")
+            break
+
     logger.info(f"Found {len(existing_issues)} existing GitHub issues with SonarCloud labels.")
     return existing_issues
 
@@ -191,7 +152,7 @@ def get_next_github_issue_number() -> int:
     
     headers = {
         "Authorization": f"token {Config.PAT_TOKEN}",
-        "Accept": "application/vnd.github.v3+json"
+        "Accept": GITHUB_ACCEPT_HEADER
     }
     
     try:
@@ -273,7 +234,7 @@ def create_github_issue(issue: Dict[str, Any], next_number: int) -> Tuple[bool, 
     
     headers = {
         "Authorization": f"token {Config.PAT_TOKEN}",
-        "Accept": "application/vnd.github.v3+json"
+        "Accept": GITHUB_ACCEPT_HEADER
     }
     
     try:
@@ -361,11 +322,9 @@ def main() -> None:
             logger.info("No new issues found")
             return
         
-        min_severity_level = Config.SEVERITY_LEVELS.get(Config.MIN_SEVERITY, 2)
-        severities_to_fetch = [sev for sev, level in Config.SEVERITY_LEVELS.items() if level >= min_severity_level]
-        severities_param = ",".join(severities_to_fetch)
+        severities = ",".join(sev for sev, level in Config.SEVERITY_LEVELS.items() if level >= Config.SEVERITY_LEVELS.get(Config.MIN_SEVERITY, 2))
 
-        logger.info(f"Fetching SonarCloud issues with severities: {severities_param} (Min Severity: {Config.MIN_SEVERITY}) - Found {len(issues)} issues")
+        logger.info(f"Fetching SonarCloud issues with severities: {severities} (Min Severity: {Config.MIN_SEVERITY}) - Found {len(issues)} issues")
         
         next_issue_number = get_next_github_issue_number()
         logger.info(f"Next expected GitHub issue number: #{next_issue_number}")
