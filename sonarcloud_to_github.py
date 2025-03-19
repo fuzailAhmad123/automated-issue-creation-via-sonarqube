@@ -119,7 +119,7 @@ def get_existing_github_issues() -> Dict[str, Any]:
 
             for issue in issues:
                 body = issue.get("body", "")
-                match = re.search(r"\* Sonar Issue Key:\s*([\w-]+)", body)
+                match = re.search(r"\* SonarCloud Issue Key:\s*([\w-]+)", body)
                 if match:
                     existing_issues[match.group(1)] = issue
 
@@ -216,7 +216,7 @@ def create_github_issue(issue: Dict[str, Any], next_number: int) -> Tuple[bool, 
 - **Type**: {issue_type}
 - **File**: `{file_path}`
 - **Line**: {line}
-- **SonarCloud Key**: `{issue_key}`
+- **SonarCloud Issue Key**: `{issue_key}`
 
 ### Issue Message:
 > {message}
