@@ -80,7 +80,7 @@ def get_sonarcloud_issues() -> List[Dict[str, Any]]:
                     )
                     response.raise_for_status()
                     break
-                except (requests.RequestException, requests.Timeout) as e:
+                except requests.RequestException as e:
                     if attempt < Config.MAX_RETRIES - 1:
                         logger.warning(f"Attempt {attempt+1} failed: {str(e)}. Retrying...")
                         continue
@@ -142,7 +142,7 @@ def get_next_github_issue_number() -> int:
                     # If no issues exist yet
                     return 1
                 
-            except (requests.RequestException, requests.Timeout) as e:
+            except requests.RequestException as e:
                 if attempt < Config.MAX_RETRIES - 1:
                     logger.warning(f"Attempt {attempt+1} failed when getting next issue number: {str(e)}. Retrying...")
                     continue
@@ -226,7 +226,7 @@ def create_github_issue(issue: Dict[str, Any], next_number: int) -> Tuple[bool, 
                 actual_number = result.get('number', 0)
                 logger.info(f"Created GitHub issue #{actual_number}: {issue_url}")
                 return True, actual_number
-            except (requests.RequestException, requests.Timeout) as e:
+            except requests.RequestException as e:
                 if attempt < Config.MAX_RETRIES - 1:
                     logger.warning(f"Attempt {attempt+1} failed: {str(e)}. Retrying...")
                     continue
