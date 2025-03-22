@@ -7,12 +7,12 @@ from datetime import datetime, timedelta, timezone
 from urllib.parse import quote
 from typing import List, Dict, Any, Tuple
 
-# logging.basicConfig(
-#     level=logging.INFO,
-#     format='%(asctime)s - %(levelname)s - %(message)s'
-# )
-# logger = logging.getLogger(__name__)
-# GITHUB_ACCEPT_HEADER = "application/vnd.github.v3+json"
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+GITHUB_ACCEPT_HEADER = "application/vnd.github.v3+json"
 
 class Config:
     """Configuration class for the integration"""
