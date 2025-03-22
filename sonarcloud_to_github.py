@@ -24,7 +24,7 @@ class Config:
     MIN_SEVERITY = "MINOR"
     GITHUB_REPO_OWNER = "fuzailAhmad123"
     GITHUB_REPO_NAME = "automated-issue-creation-via-sonarqube"
-    ISSUES_LOOKBACK_DAYS = 1 
+    ISSUES_LOOKBACK_DAYS = 10 
     REQUEST_TIMEOUT = 30
     MAX_RETRIES = 3
     DUPLICATE_GITHUB_ISSUES_CHECK_COUNT = 100
