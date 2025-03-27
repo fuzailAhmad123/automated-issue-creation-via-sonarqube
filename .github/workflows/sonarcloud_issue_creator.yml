@@ -1,18 +1,11 @@
 name: SonarCloud Issue Creator
 
 on:
-  # Run after the SonarCloud analysis completes
-  workflow_run:
-    workflows: ["Build"]  # This matches the name of your SonarCloud workflow
-    types:
-      - completed
-    branches:
-      - main  # Only run on the master branch
+  workflow_dispatch:  # Allows manual execution from GitHub Actions
 
 jobs:
   create-issues:
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     
     steps:
       - name: Checkout code
@@ -23,13 +16,8 @@ jobs:
         with:
           python-version: '3.10'
           
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install requests
-          
       - name: Run SonarCloud to GitHub issue converter
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
-        run: python sonarcloud_to_github.py 
+        run: python sonarcloud_to_github.py
